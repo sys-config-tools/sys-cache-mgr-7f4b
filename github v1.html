@@ -1,0 +1,2201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Federal Financial Services Policy Dashboard</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0e14;
+            --bg-secondary: #151922;
+            --bg-tertiary: #1f2430;
+            --accent-primary: #39d0d8;
+            --accent-secondary: #ff8f40;
+            --accent-critical: #f07178;
+            --text-primary: #e6e6e8;
+            --text-secondary: #a6acb9;
+            --text-dim: #6c7589;
+            --border: #2a2f3a;
+            --success: #7fd962;
+            --warning: #ffb454;
+        }
+
+        body {
+            font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 100%;
+            padding: 0;
+        }
+
+        /* Refresh Button */
+        .refresh-btn {
+            background: var(--accent-primary);
+            color: var(--bg-primary);
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .refresh-btn:hover {
+            background: var(--accent-secondary);
+            transform: translateY(-1px);
+        }
+        
+        .refresh-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .refresh-icon {
+            display: inline-block;
+            transition: transform 0.3s;
+        }
+        
+        .refresh-btn.refreshing .refresh-icon {
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .last-update {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            margin-top: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .connection-status {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: pulse 2s infinite;
+        }
+        
+        .connection-status.offline {
+            background: var(--accent-critical);
+            animation: none;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+            padding: 1.5rem 1rem;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        @media (max-width: 500px) {
+            .refresh-btn span:last-child {
+                display: none; /* Hide "Refresh Now" text on very small screens */
+            }
+            
+            .refresh-btn {
+                padding: 0.6rem;
+            }
+        }
+
+        .header-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.5rem;
+            color: var(--accent-primary);
+        }
+
+        .header-date {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Stats Bar */
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 0.75rem 0.5rem;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .stat-value {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--accent-primary);
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 0.25rem;
+        }
+
+        /* Priority Filter */
+        .filter-bar {
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+            white-space: nowrap;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .filter-chips {
+            display: inline-flex;
+            gap: 0.5rem;
+        }
+
+        .chip {
+            padding: 0.5rem 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .chip.active {
+            background: var(--accent-primary);
+            color: var(--bg-primary);
+            border-color: var(--accent-primary);
+        }
+
+        .chip:hover {
+            border-color: var(--accent-primary);
+        }
+
+        /* Summary Toggle Bar */
+        .summary-toggle-bar {
+            padding: 0.75rem 1rem;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .summary-toggle {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--accent-primary);
+            border-radius: 8px;
+            color: var(--accent-primary);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .summary-toggle:hover {
+            background: var(--accent-primary);
+            color: var(--bg-primary);
+            transform: translateY(-1px);
+        }
+
+        .toggle-icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Executive Summary Section */
+        .executive-summary {
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+            border: 2px solid var(--accent-primary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1rem;
+            display: none;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.4s ease;
+        }
+
+        .executive-summary.visible {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .summary-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .summary-icon {
+            width: 28px;
+            height: 28px;
+            color: var(--accent-primary);
+        }
+
+        .summary-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--accent-primary);
+            letter-spacing: -0.02em;
+        }
+
+        .summary-date-range {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            margin-left: auto;
+        }
+
+        .summary-content {
+            line-height: 1.8;
+        }
+
+        .summary-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .summary-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .summary-section-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--accent-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .summary-text {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-bottom: 0.75rem;
+        }
+
+        .summary-highlights {
+            list-style: none;
+            padding: 0;
+        }
+
+        .summary-highlights li {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            padding-left: 1.25rem;
+            margin-bottom: 0.5rem;
+            position: relative;
+            line-height: 1.6;
+        }
+
+        .summary-highlights li::before {
+            content: '▸';
+            position: absolute;
+            left: 0;
+            color: var(--accent-primary);
+            font-weight: 600;
+        }
+
+        .summary-stat-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .summary-stat {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.75rem;
+            text-align: center;
+        }
+
+        .summary-stat-value {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--accent-primary);
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+
+        .summary-stat-label {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .summary-trends {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .trend-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .trend-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .trend-indicator {
+            min-width: 20px;
+            font-size: 1rem;
+        }
+
+        .trend-indicator.up {
+            color: var(--success);
+        }
+
+        .trend-indicator.down {
+            color: var(--accent-critical);
+        }
+
+        .trend-indicator.neutral {
+            color: var(--warning);
+        }
+
+        /* Main Content */
+        .content {
+            padding: 1rem;
+        }
+
+        /* Section Headers */
+        .section-header {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin: 2rem 0 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* Policy Cards */
+        .policy-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .policy-card:hover {
+            border-color: var(--accent-primary);
+            transform: translateY(-2px);
+        }
+
+        .policy-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: var(--accent-primary);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .policy-card:hover::before {
+            opacity: 1;
+        }
+
+        .policy-card.critical::before {
+            background: var(--accent-critical);
+            opacity: 1;
+        }
+
+        .policy-card.high::before {
+            background: var(--warning);
+            opacity: 1;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.75rem;
+        }
+
+        .card-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .card-date {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-dim);
+        }
+
+        .card-source {
+            font-size: 0.75rem;
+            color: var(--accent-primary);
+            font-weight: 500;
+        }
+
+        .priority-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            white-space: nowrap;
+        }
+
+        .priority-badge.critical {
+            background: rgba(240, 113, 120, 0.2);
+            color: var(--accent-critical);
+            border: 1px solid var(--accent-critical);
+        }
+
+        .priority-badge.high {
+            background: rgba(255, 180, 84, 0.2);
+            color: var(--warning);
+            border: 1px solid var(--warning);
+        }
+
+        .priority-badge.medium {
+            background: rgba(57, 208, 216, 0.2);
+            color: var(--accent-primary);
+            border: 1px solid var(--accent-primary);
+        }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            line-height: 1.4;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .card-summary {
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: var(--text-secondary);
+            margin-bottom: 0.75rem;
+        }
+
+        .card-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+
+        .tag {
+            padding: 0.25rem 0.5rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            font-family: 'IBM Plex Mono', monospace;
+        }
+
+        .tag.sector {
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+        }
+
+        .tag.topic {
+            border-color: var(--accent-secondary);
+            color: var(--accent-secondary);
+        }
+
+        /* Calendar Section */
+        .calendar-grid {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .calendar-item {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent-primary);
+            border-radius: 8px;
+            padding: 0.75rem;
+        }
+
+        .calendar-date {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--accent-primary);
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .calendar-event {
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+
+        .calendar-desc {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        /* Footer Nav */
+        .footer-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-around;
+            padding: 0.75rem 0;
+            z-index: 100;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.5rem;
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 0.65rem;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .nav-item.active {
+            color: var(--accent-primary);
+        }
+
+        .nav-icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Loading Animation */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .loading {
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        /* Responsive */
+        @media (min-width: 768px) {
+            .container {
+                max-width: 1400px;
+                margin: 0 auto;
+            }
+
+            .content {
+                padding: 2rem 3rem;
+                padding-bottom: 2rem;
+            }
+
+            .stats-bar {
+                grid-template-columns: repeat(3, 1fr);
+                padding: 2rem 3rem;
+                gap: 1.5rem;
+            }
+            
+            .stat-item {
+                padding: 1.5rem 1rem;
+            }
+            
+            .stat-value {
+                font-size: 2.5rem;
+            }
+            
+            .stat-label {
+                font-size: 0.75rem;
+            }
+            
+            .filter-bar {
+                padding: 1.5rem 3rem;
+            }
+            
+            .summary-toggle-bar {
+                padding: 1rem 3rem;
+            }
+            
+            .policy-card {
+                padding: 1.5rem;
+                margin-bottom: 1.5rem;
+            }
+            
+            .card-title {
+                font-size: 1.1rem;
+            }
+            
+            .card-summary {
+                font-size: 0.95rem;
+            }
+            
+            .section-header {
+                font-size: 1rem;
+                margin: 2.5rem 0 1.5rem;
+            }
+            
+            .footer-nav {
+                display: none; /* Hide mobile nav on desktop */
+            }
+        }
+        
+        @media (min-width: 1200px) {
+            .container {
+                max-width: 1600px;
+            }
+            
+            .content {
+                display: grid;
+                grid-template-columns: 1fr 350px;
+                gap: 2rem;
+                padding-bottom: 2rem;
+            }
+            
+            .main-content {
+                grid-column: 1;
+            }
+            
+            .sidebar {
+                grid-column: 2;
+                position: sticky;
+                top: 80px;
+                height: fit-content;
+            }
+            
+            .stats-bar {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        /* Desktop sidebar */
+        .sidebar {
+            display: none;
+        }
+        
+        @media (min-width: 1200px) {
+            .sidebar {
+                display: block;
+            }
+            
+            .sidebar-section {
+                background: var(--bg-secondary);
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                padding: 1.5rem;
+                margin-bottom: 1.5rem;
+            }
+            
+            .sidebar-title {
+                font-size: 0.9rem;
+                font-weight: 600;
+                color: var(--accent-primary);
+                margin-bottom: 1rem;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+            
+            .quick-stat {
+                display: flex;
+                justify-content: space-between;
+                padding: 0.75rem 0;
+                border-bottom: 1px solid var(--border);
+                font-size: 0.85rem;
+            }
+            
+            .quick-stat:last-child {
+                border-bottom: none;
+            }
+            
+            .quick-stat-label {
+                color: var(--text-secondary);
+            }
+            
+            .quick-stat-value {
+                color: var(--accent-primary);
+                font-weight: 600;
+                font-family: 'IBM Plex Mono', monospace;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div>
+                <div class="header-title">Federal Policy Dashboard</div>
+                <div class="header-date" id="headerDate">Loading...</div>
+                <div class="last-update" id="lastUpdate">
+                    <span class="connection-status" id="connectionStatus"></span>
+                    <span id="updateText">Initializing...</span>
+                </div>
+            </div>
+            <button class="refresh-btn" id="refreshBtn" onclick="refreshData()">
+                <span class="refresh-icon">🔄</span>
+                <span>Refresh Now</span>
+            </button>
+        </div>
+
+        <!-- Stats Bar -->
+        <div class="stats-bar">
+            <div class="stat-item">
+                <span class="stat-value">18</span>
+                <span class="stat-label">Total Items</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value">3</span>
+                <span class="stat-label">Critical</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value">7</span>
+                <span class="stat-label">High</span>
+            </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+            <div class="filter-chips">
+                <div class="chip active" data-filter="all">All</div>
+                <div class="chip" data-filter="critical">Critical</div>
+                <div class="chip" data-filter="legislative">Legislative</div>
+                <div class="chip" data-filter="regulatory">Regulatory</div>
+                <div class="chip" data-filter="executive">Executive</div>
+            </div>
+        </div>
+
+        <!-- Summary Toggle -->
+        <div class="summary-toggle-bar">
+            <button class="summary-toggle" id="summaryToggle">
+                <svg class="toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span>Week in Review</span>
+            </button>
+        </div>
+
+        <!-- Main Content -->
+        <div class="content">
+            <div class="main-content">
+            
+            <!-- Executive Summary (Hidden by default, toggled by button) -->
+            <div class="executive-summary" id="executiveSummary">
+                <div class="summary-header">
+                    <svg class="summary-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <div class="summary-title">Executive Summary</div>
+                    <div class="summary-date-range">FEB 10-14, 2026</div>
+                </div>
+
+                <div class="summary-content">
+                    <div class="summary-section">
+                        <div class="summary-section-title">Overview</div>
+                        <div class="summary-text">
+                            This week marked a pivotal shift in digital assets regulation as SEC Chairman Paul Atkins laid out a comprehensive framework before Senate Banking, signaling the end of enforcement-heavy crypto oversight. Simultaneously, banking regulators moved toward tailored supervision with the Fed extending stress test transparency comment periods and the OCC implementing specialized BSA/AML procedures for community banks. The CFPB's reduced enforcement posture under new leadership suggests a broader deregulatory trend across federal financial agencies.
+                        </div>
+                    </div>
+
+                    <div class="summary-section">
+                        <div class="summary-section-title">Key Developments</div>
+                        <ul class="summary-highlights">
+                            <li><strong>Crypto Regulatory Clarity:</strong> SEC Chairman Atkins committed to exemptive relief for tokenized securities by Q3 2026 and jurisdictional clarity with CFTC, marking a decisive pivot from the Biden-era enforcement approach. Senate Banking hearing revealed bipartisan interest in framework legislation despite Warren's investor protection concerns.</li>
+                            <li><strong>Banking Supervision Evolution:</strong> Federal Reserve extended stress test transparency proposal comment deadline (Feb 21) amid industry concerns about competitive disclosure. New Fed supervisory principles emphasize proportionality and risk-focus, paired with 30% staffing reduction in supervision division by year-end.</li>
+                            <li><strong>Community Bank Relief:</strong> OCC's tailored BSA/AML exam procedures (effective Feb 1) represent first departure from one-size-fits-all FFIEC manual since 2005, acknowledging resource constraints at smaller institutions while maintaining compliance expectations.</li>
+                            <li><strong>CFPB in Transition:</strong> Acting Director Vought's withdrawal of 67 guidance documents and dramatic enforcement reduction (24/year → 1 in January) signals potential regulatory rollback. Industry monitoring appropriations riders that could further restrict Bureau authority.</li>
+                            <li><strong>Housing Policy Momentum:</strong> Treasury Secretary Bessent's affordability agenda testimony and Senate Banking's unanimous advancement of housing legislation package indicate bipartisan appetite for GSE reform and supply-side interventions.</li>
+                        </ul>
+                    </div>
+
+                    <div class="summary-section">
+                        <div class="summary-section-title">This Week By The Numbers</div>
+                        <div class="summary-stat-grid">
+                            <div class="summary-stat">
+                                <span class="summary-stat-value">18</span>
+                                <span class="summary-stat-label">Total Policy Actions</span>
+                            </div>
+                            <div class="summary-stat">
+                                <span class="summary-stat-value">3</span>
+                                <span class="summary-stat-label">Critical Items</span>
+                            </div>
+                            <div class="summary-stat">
+                                <span class="summary-stat-value">2</span>
+                                <span class="summary-stat-label">Major Hearings</span>
+                            </div>
+                            <div class="summary-stat">
+                                <span class="summary-stat-value">67</span>
+                                <span class="summary-stat-label">CFPB Guidance Withdrawn</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="summary-section">
+                        <div class="summary-section-title">Emerging Trends & Forward Indicators</div>
+                        <div class="summary-trends">
+                            <div class="trend-item">
+                                <span class="trend-indicator up">↗</span>
+                                <div><strong>Regulatory Deference to Industry:</strong> Across agencies, shift from prescriptive rulemaking toward principles-based supervision. Fed staffing cuts, CFPB enforcement pause, and OCC tailoring all point to lighter-touch oversight philosophy.</div>
+                            </div>
+                            <div class="trend-item">
+                                <span class="trend-indicator up">↗</span>
+                                <div><strong>Crypto Institutionalization:</strong> SEC tokenized securities guidance and DTC no-action letter for RWA tokenization pilot signal mainstream financial infrastructure opening to digital assets. Expect accelerated bank/broker-dealer crypto custody applications.</div>
+                            </div>
+                            <div class="trend-item">
+                                <span class="trend-indicator neutral">→</span>
+                                <div><strong>CRE Stabilization (Tentative):</strong> Regional bank rally on improved loan loss data, but $1.5T maturity wall through 2026 remains. Fed loan officer survey shows easing standards (9% tightening vs. 30%+ in 2024), but office sector stress persists.</div>
+                            </div>
+                            <div class="trend-item">
+                                <span class="trend-indicator down">↘</span>
+                                <div><strong>Partisan Appropriations Risk:</strong> House passage of FSGG bill with CFPB restrictions sets up Senate showdown. Government shutdown risk in Q2 if no compromise reached on Bureau funding and enforcement authority.</div>
+                            </div>
+                            <div class="trend-item">
+                                <span class="trend-indicator up">↗</span>
+                                <div><strong>Housing Policy Alignment:</strong> Rare bipartisan Senate Banking activity on housing, combined with Treasury-FHFA coordination on GSE reform, suggests legislative pathway for Fannie/Freddie conservatorship exit in 2026-2027.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="summary-section">
+                        <div class="summary-section-title">Strategic Implications</div>
+                        <div class="summary-text">
+                            <strong>For Credit Unions:</strong> OCC community bank BSA/AML relief may pressure NCUA to follow suit. Monitor CFPB guidance withdrawals for exam manual updates. Housing legislation could expand member business lending opportunities if GSE reform includes community lender provisions.
+                        </div>
+                        <div class="summary-text">
+                            <strong>For Banks:</strong> Stress test transparency proposal comment deadline (Feb 21) is last chance to shape competitive disclosure requirements. Fed supervisory staffing cuts may extend exam cycles—ensure internal compliance monitoring robust. Crypto framework clarity enables strategic planning for digital asset custody/services.
+                        </div>
+                        <div class="summary-text">
+                            <strong>For Fintechs:</strong> CFPB enforcement pause creates regulatory uncertainty—guidance withdrawals may invalidate compliance strategies, but reduced enforcement risk. SEC crypto clarity benefits DeFi/tokenization players. Monitor appropriations riders that could restrict CFPB supervisory exam authority over nonbanks.
+                        </div>
+                    </div>
+
+                    <div class="summary-section">
+                        <div class="summary-section-title">Week Ahead Watch List</div>
+                        <ul class="summary-highlights">
+                            <li>Fed Vice Chair for Supervision testimony (House Financial Services, Feb 18) — expect questions on supervisory staffing cuts and Silicon Valley Bank lessons learned</li>
+                            <li>Fed Governor Waller speech on dollar strength (Feb 19) — signals on international capital flows and emerging market stress</li>
+                            <li>Stress test transparency comment deadline (Feb 21) — BPI/ABA coalition letter expected to argue competitive harm</li>
+                            <li>Existing home sales data (Feb 21) — test of housing market response to Fed rate pause</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Critical Items -->
+            <div class="section-header">🔴 Critical Priority</div>
+
+            <div class="policy-card critical" data-type="executive">
+                <div class="card-header">
+                    <div class="card-meta">
+                        <div class="card-date">FEB 12, 2026</div>
+                        <div class="card-source">Senate Banking Committee</div>
+                    </div>
+                    <div class="priority-badge critical">Critical</div>
+                </div>
+                <div class="card-title">SEC Chairman Paul Atkins Testifies on Crypto Framework</div>
+                <div class="card-summary">
+                    Chairman Atkins outlined the SEC's comprehensive digital assets regulatory roadmap in testimony before Senate Banking. Key commitments include exemptive relief for tokenized securities by Q3 2026 and clarity on which digital assets fall under SEC vs. CFTC jurisdiction. Ranking Member Warren pressed on investor protection concerns.
+                </div>
+                <div class="card-tags">
+                    <span class="tag sector">Securities</span>
+                    <span class="tag sector">Crypto/Digital Assets</span>
+                    <span class="tag topic">Regulatory Framework</span>
+                </div>
+            </div>
+
+            <div class="policy-card critical" data-type="regulatory">
+                <div class="card-header">
+                    <div class="card-meta">
+                        <div class="card-date">FEB 11, 2026</div>
+                        <div class="card-source">Federal Reserve Board</div>
+                    </div>
+                    <div class="priority-badge critical">Critical</div>
+                </div>
+                <div class="card-title">Fed Extends Comment Period on Stress Test Transparency Proposal</div>
+                <div class="card-summary">
+                    The Federal Reserve extended the comment deadline to February 21, 2026 for its proposed rule enhancing stress test model and scenario transparency. Industry groups requested more time to analyze potential competitive implications of disclosing bank-specific modeling assumptions. This affects all banks with >$100B assets.
+                </div>
+                <div class="card-tags">
+                    <span class="tag sector">Banks - Regional</span>
+                    <span class="tag sector">Banks - GSIBs</span>
+                    <span class="tag topic">Stress Testing</span>
+                    <span class="tag topic">Capital Requirements</span>
+                </div>
+            </div>
+
+            <div class="policy-card critical" data-type="regulatory">
+                <div class="card-header">
+                    <div class="card-meta">
+                        <div class="card-date">FEB 10, 2026</div>
+                        <div class="card-source">OCC</div>
+                    </div>
+                    <div class="priority-badge critical">Critical</div>
+                </div>
+                <div class="card-title">OCC Implements Tailored BSA/AML Exam Procedures for Community Banks</div>
+                <div class="card-summary">
+                    Effective February 1, 2026, the OCC implemented specialized BSA/AML examination procedures for community banks, departing from the one-size-fits-all FFIEC manual used since 2005. New procedures focus on risk-based assessments appropriate to smaller institutions' business models and compliance resources. Independent testing programs must be documented to support examiner reliance.
+                </div>
+                <div class="card-tags">
+                    <span class="tag sector">Banks - Community</span>
+                    <span class="tag topic">AML/BSA</span>
+                    <span class="tag topic">Supervision</span>
+                </div>
+            </div>
+
+            <!-- High Priority -->
+            <div class="section-header">🟡 High Priority</div>
+
+            <div class="policy-card high" data-type="legislative">
+                <div class="card-header">
+                    <div class="card-meta">
+                        <div class="card-date">FEB 13, 2026</div>
+                        <div class="card-source">House Appropriations</div>
+                    </div>
+                    <div class="priority-badge high">High</div>
+                </div>
+                <div class="card-title">FY2026 FSGG Appropriations Package Passes House</div>
+                <div class="card-summary">
+                    The House passed H.R. 7006, the Financial Services and General Government appropriations for FY2026, funding Treasury, IRS, CFPB, SEC, and federal judiciary. Bill includes language restricting CFPB enforcement authority and cuts to IRS enforcement budget. Senate passage uncertain given partisan divisions over CFPB provisions.
+                </div>
+                <div class="card-tags">
+                    <span class="tag sector">All Sectors</span>
+                    <span class="tag topic">Appropriations</span>
+                    <span class="tag topic">CFPB</span>
+                </div>
+            </div>
+
+            <div class="policy-card high" data-type="executive">
+                <div class="card-header">
+                    <div class="card-meta">
+                        <div class="card-date">FEB 05, 2026</div>
+                        <div class="card-source">Treasury Secretary</div>
+                    </div>
+                    <div class="priority-badge high">High</div>
+                </div>
+                <div class="card-title">Treasury Secretary Bessent Discusses Affordability Agenda</div>
+                <div class="card-summary">
+                    Secretary Scott Bessent testified before Senate Banking on housing affordability and financial inclusion initiatives. Highlighted Treasury's coordination with FHFA on GSE reform efforts and emphasized public-private partnerships for expanding access to capital in underserved communities. Q&A focused on commercial real estate exposure and regional bank health.
+                </div>
+                <div class="card-tags">
+                    <span class="tag sector">Housing Finance</span>
+                    <span class="tag sector">GSEs</span>
+                    <span class="tag topic">Affordability</span>
+                </div>
+            </div>
+
+            <div class="policy-card high" data-type="regulatory">
+                <div class="card-header">
+                    <div class="card-meta">
+                        <div class="card-date">FEB 08, 2026</div>
+                        <div class="card-source">CFPB</div>
+                    </div>
+                    <div class="priority-badge high">High</div>
+                </div>
+                <div class="card-title">CFPB Operating Under Reduced Enforcement Posture</div>
+                <div class="card-summary">
+                    Following leadership transition and budget uncertainty, CFPB filed only one enforcement action in January 2026 (down from 24/year average under previous administration). Acting Director Russ Vought withdrew 67 guidance documents and finalized 8 rules vs. 24 in prior year. Industry watching for potential regulatory rollback signals.
+                </div>
+                <div class="card-tags">
+                    <span class="tag sector">Consumer Finance</span>
+                    <span class="tag sector">Fintech</span>
+                    <span class="tag topic">Enforcement</span>
+                    <span class="tag topic">Deregulation</span>
+                </div>
+            </div>
+
+            <div class="policy-card high" data-type="regulatory">
+                <div class="card-header">
+                    <div class="card-meta">
+                        <div class="card-date">JAN 28, 2026</div>
+                        <div class="card-source">SEC Staff</div>
+                    </div>
+                    <div class="priority-badge high">High</div>
+                </div>
+                <div class="card-title">SEC Issues Joint Staff Statement on Tokenized Securities</div>
+                <div class="card-summary">
+                    SEC's Division of Corporation Finance, Investment Management, and Trading and Markets issued guidance clarifying that tokenizing traditional securities doesn't change their regulatory treatment under federal securities laws. Statement emphasizes that format changes (blockchain representation) don't alter whether an instrument is a security. Key signal for RWA tokenization market development.
+                </div>
+                <div class="card-tags">
+                    <span class="tag sector">Securities</span>
+                    <span class="tag sector">Crypto/Digital Assets</span>
+                    <span class="tag topic">Tokenization</span>
+                </div>
+            </div>
+
+            <!-- Upcoming Calendar -->
+            <div class="section-header">📅 This Week Ahead (Feb 17-21)</div>
+
+            <!-- Market Analysis Section -->
+            <div class="section-header">📈 Market Analysis & Financial Sector Performance</div>
+
+            <!-- Market Overview Card -->
+            <div class="policy-card" data-type="market" style="background: linear-gradient(135deg, var(--bg-secondary) 0%, #1a1f2e 100%); border-color: var(--accent-secondary);">
+                <div class="card-header">
+                    <div class="card-meta">
+                        <div class="card-date">WEEK OF FEB 10-14, 2026</div>
+                        <div class="card-source">Market Overview</div>
+                    </div>
+                    <div class="priority-badge high">High</div>
+                </div>
+                <div class="card-title">Financial Sector Shows Mixed Performance Amid AI Disruption Concerns</div>
+                <div class="card-summary">
+                    Regional bank ETFs (KRE) posted strong double-digit gains YTD (+13.3%) driven by CRE stabilization signals and improved credit quality metrics. However, major money-center banks faced headwinds this week as AI disruption fears weighed on investor sentiment alongside disappointing retail sales data. XLF (Financial Select Sector SPDR) showed signs of technical topping after completing five-wave advance, with analysts flagging potential corrective pullback.
+                </div>
+                <div class="card-tags">
+                    <span class="tag sector">Banks - All</span>
+                    <span class="tag topic">Market Performance</span>
+                    <span class="tag topic">AI Disruption</span>
+                </div>
+            </div>
+
+            <!-- ETF Performance Grid -->
+            <div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; margin-bottom: 1rem;">
+                <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary); margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border);">
+                    Financial Sector ETF Performance
+                </div>
+                
+                <div style="display: grid; gap: 0.75rem;">
+                    <!-- KRE -->
+                    <div style="background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <div>
+                                <div style="font-family: 'IBM Plex Mono', monospace; font-size: 0.9rem; font-weight: 600; color: var(--accent-primary);">KRE</div>
+                                <div style="font-size: 0.7rem; color: var(--text-dim);">SPDR S&P Regional Banking ETF</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">$71.79</div>
+                                <div style="font-size: 0.75rem; color: var(--success);">+13.33% YTD</div>
+                            </div>
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.5;">
+                            Strong YTD performance. 52-week range: $47.06-$74.08. Dividend yield: 2.3%. Analyst consensus: Moderate Buy with $79.86 target (+12.77% upside).
+                        </div>
+                    </div>
+
+                    <!-- KBE -->
+                    <div style="background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <div>
+                                <div style="font-family: 'IBM Plex Mono', monospace; font-size: 0.9rem; font-weight: 600; color: var(--accent-primary);">KBE</div>
+                                <div style="font-size: 0.7rem; color: var(--text-dim);">SPDR S&P Bank ETF</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">—</div>
+                                <div style="font-size: 0.75rem; color: var(--success);">+13.61% YTD</div>
+                            </div>
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.5;">
+                            Broader bank exposure including money-center banks. Outperforming category average (+12.82%). Strong recovery from 2022-2023 bear market.
+                        </div>
+                    </div>
+
+                    <!-- XLF -->
+                    <div style="background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <div>
+                                <div style="font-family: 'IBM Plex Mono', monospace; font-size: 0.9rem; font-weight: 600; color: var(--warning);">XLF</div>
+                                <div style="font-size: 0.7rem; color: var(--text-dim);">Financial Select Sector SPDR</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">—</div>
+                                <div style="font-size: 0.75rem; color: var(--warning);">⚠ Technical Warning</div>
+                            </div>
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.5;">
+                            Technical analysis suggests potential topping pattern. Completed five-wave Elliott Wave advance with weakening volume/momentum divergence. Watch for pullback to lower trend channel support.
+                        </div>
+                    </div>
+
+                    <!-- IAT -->
+                    <div style="background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <div>
+                                <div style="font-family: 'IBM Plex Mono', monospace; font-size: 0.9rem; font-weight: 600; color: var(--accent-primary);">IAT</div>
+                                <div style="font-size: 0.7rem; color: var(--text-dim);">iShares Regional Banks ETF</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">~$63</div>
+                                <div style="font-size: 0.75rem; color: var(--success);">52-week high</div>
+                            </div>
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.5;">
+                            Highest dividend yield among regional bank ETFs (2.73%). Strong YTD gains. Recent 52-week high reflects sector momentum in small/mid-sized banks.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Individual Bank Performance -->
+            <div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; margin-bottom: 1rem;">
+                <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary); margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border);">
+                    Major Bank Stocks This Week
+                </div>
+                
+                <div style="display: grid; gap: 0.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: var(--bg-tertiary); border-radius: 6px;">
+                        <div>
+                            <div style="font-family: 'IBM Plex Mono', monospace; font-weight: 600; color: var(--text-primary);">JPM (JPMorgan)</div>
+                            <div style="font-size: 0.7rem; color: var(--text-dim);">Beat on EPS/revenue, weak IB</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 0.85rem; color: var(--accent-critical);">-0.97%</div>
+                            <div style="font-size: 0.65rem; color: var(--text-dim);">Post-earnings</div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: var(--bg-tertiary); border-radius: 6px;">
+                        <div>
+                            <div style="font-family: 'IBM Plex Mono', monospace; font-weight: 600; color: var(--text-primary);">WFC (Wells Fargo)</div>
+                            <div style="font-size: 0.7rem; color: var(--text-dim);">Missed estimates, severance costs</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 0.85rem; color: var(--accent-critical);">-4.61%</div>
+                            <div style="font-size: 0.65rem; color: var(--text-dim);">$86.28 current</div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: var(--bg-tertiary); border-radius: 6px;">
+                        <div>
+                            <div style="font-family: 'IBM Plex Mono', monospace; font-weight: 600; color: var(--text-primary);">BAC (Bank of America)</div>
+                            <div style="font-size: 0.7rem; color: var(--text-dim);">Earnings week decline</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 0.85rem; color: var(--accent-critical);">-3.78%</div>
+                            <div style="font-size: 0.65rem; color: var(--text-dim);">Post-earnings</div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: var(--bg-tertiary); border-radius: 6px;">
+                        <div>
+                            <div style="font-family: 'IBM Plex Mono', monospace; font-weight: 600; color: var(--text-primary);">C (Citigroup)</div>
+                            <div style="font-size: 0.7rem; color: var(--text-dim);">Earnings week decline</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 0.85rem; color: var(--accent-critical);">-3.34%</div>
+                            <div style="font-size: 0.65rem; color: var(--text-dim);">Post-earnings</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 1rem; padding: 0.75rem; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px;">
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.6; margin-bottom: 0.75rem;">
+                        <strong style="color: var(--accent-secondary);">Gerard Cassidy (RBC Capital, #1 US Stock Analyst 2024):</strong> In CNBC appearance Feb 13, called financials slide an "overreaction to AI disruption." Maintains bullish 2026 outlook citing improving loan growth (5-6% forecast), steeper yield curve, and banks going "on the offense" vs. private credit. Expects M&A acceleration among $50-90B asset regionals and increased buybacks/dividends across sector.
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.6; margin-bottom: 0.75rem;">
+                        <strong style="color: var(--accent-secondary);">Erika Najarian (UBS, World Economic Forum Young Global Leader):</strong> Advising rotation into regional banks from money-center banks. Cites three catalysts: (1) regulatory easing (leverage lending limits relaxed), (2) steepening yield curve improving NIMs, (3) M&A activity return. Top pick: PNC (Buy, $229 target). Selective on money-centers, favors Bank of America on valuation.
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.6;">
+                        <strong style="color: var(--accent-secondary);">Mike Mayo (Wells Fargo Securities, ex-Fed analyst):</strong> Cautious on bank buybacks at current valuations. Echoes JPM CEO Dimon view that buying back stock "greatly in excess of two times tangible book is a mistake." Watching middle-market loan stabilization and election policy impacts on business lending appetite.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Market Drivers Analysis -->
+            <div class="policy-card medium" data-type="market">
+                <div class="card-header">
+                    <div class="card-meta">
+                        <div class="card-date">FEB 10-14, 2026</div>
+                        <div class="card-source">Market Drivers</div>
+                    </div>
+                    <div class="priority-badge medium">Medium</div>
+                </div>
+                <div class="card-title">CRE Stabilization Supports Regional Banks Despite AI Headwinds</div>
+                <div class="card-summary">
+                    Regional banks benefited from three key tailwinds: (1) Fed Senior Loan Officer Survey showing only 9% of banks tightening lending standards vs. 30.3% in April 2024, (2) Bank loan loss provisions coming in below estimates with lower-than-expected net charge-offs on CRE portfolios, (3) Steeper yield curve improving net interest margins. However, money-center banks faced pressure from AI disruption narrative (fears of fintech/AI displacement) and weak U.S. retail sales data dampening near-term growth outlook.
+                </div>
+                <div class="card-tags">
+                    <span class="tag sector">Banks - Regional</span>
+                    <span class="tag topic">Commercial Real Estate</span>
+                    <span class="tag topic">Credit Quality</span>
+                    <span class="tag topic">Net Interest Margin</span>
+                </div>
+            </div>
+
+            <!-- Sector Rotation Analysis -->
+            <div class="policy-card medium" data-type="market">
+                <div class="card-header">
+                    <div class="card-meta">
+                        <div class="card-date">FEBRUARY 2026</div>
+                        <div class="card-source">Sector Rotation</div>
+                    </div>
+                    <div class="priority-badge medium">Medium</div>
+                </div>
+                <div class="card-title">Financials Worst-Performing S&P Sector YTD Despite Regional Bank Strength</div>
+                <div class="card-summary">
+                    XLF (Financials sector) is the worst-performing S&P 500 sector in 2026 YTD, despite regional bank outperformance. Technical analysts note potential topping pattern with five-wave Elliott Wave structure complete and momentum divergence. Credit card interest rate cap debate and AI disruption narrative weighing on larger banks. Market leadership rotating toward defensive/reflationary sectors (gold, biotech, energy) while high-beta growth and Mag 7 lag. UBS analyst Erika Najarian remains bullish on regionals citing regulatory easing and steepening yield curve.
+                </div>
+                <div class="card-tags">
+                    <span class="tag sector">Banks - All</span>
+                    <span class="tag topic">Market Performance</span>
+                    <span class="tag topic">Technical Analysis</span>
+                </div>
+            </div>
+
+            <!-- Policy-Market Linkages -->
+            <div style="background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%); border: 1px solid var(--accent-primary); border-radius: 12px; padding: 1rem; margin-bottom: 1rem;">
+                <div style="font-size: 0.85rem; font-weight: 600; color: var(--accent-primary); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <svg style="width: 18px; height: 18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    <span>Policy-Market Connections This Week</span>
+                </div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.7;">
+                    <div style="margin-bottom: 0.75rem;">
+                        <strong style="color: var(--text-primary);">Fed Stress Test Extension → Regional Bank Rally:</strong> Extended comment period signals potential regulatory flexibility. Market interpreting as Fed acknowledgment of industry concerns about competitive harm from disclosure requirements.
+                    </div>
+                    <div style="margin-bottom: 0.75rem;">
+                        <strong style="color: var(--text-primary);">OCC BSA/AML Tailoring → Community Bank Sentiment:</strong> Specialized exam procedures reduce compliance burden expectations. Positive for smaller institutions in KRE portfolio (140+ holdings).
+                    </div>
+                    <div style="margin-bottom: 0.75rem;">
+                        <strong style="color: var(--text-primary);">CFPB Enforcement Pause → Fintech Valuation Support:</strong> Reduced regulatory risk premium for consumer finance companies. Watch for spillover to bank partnerships with fintech platforms.
+                    </div>
+                    <div>
+                        <strong style="color: var(--text-primary);">Credit Card Cap Debate → XLF Underperformance:</strong> Concerns over potential legislative caps on credit card interest rates weighing on diversified financial stocks with large card portfolios.
+                    </div>
+                </div>
+            </div>
+
+            <div class="calendar-grid">
+                <div class="calendar-item">
+                    <div class="calendar-date">TUE, FEB 18 • 10:00 AM ET</div>
+                    <div class="calendar-event">House Financial Services Full Committee Hearing</div>
+                    <div class="calendar-desc">Federal Reserve Vice Chair for Supervision testimony on bank supervision priorities</div>
+                </div>
+
+                <div class="calendar-item">
+                    <div class="calendar-date">WED, FEB 19 • 2:00 PM ET</div>
+                    <div class="calendar-event">Fed Governor Christopher Waller Speech</div>
+                    <div class="calendar-desc">Global Interdependence Center Summit on dollar strength and US exceptionalism</div>
+                </div>
+
+                <div class="calendar-item">
+                    <div class="calendar-date">FRI, FEB 21</div>
+                    <div class="calendar-event">Comment Deadline: Fed Stress Test Transparency</div>
+                    <div class="calendar-desc">Final day for public comments on proposed rule enhancing model transparency</div>
+                </div>
+
+                <div class="calendar-item">
+                    <div class="calendar-date">FRI, FEB 21 • 8:30 AM ET</div>
+                    <div class="calendar-event">Economic Data Release</div>
+                    <div class="calendar-desc">Existing Home Sales (Jan 2026) - National Association of Realtors</div>
+                </div>
+            </div>
+
+            <!-- Medium Priority -->
+            <div class="section-header">Medium Priority</div>
+
+            <div class="policy-card medium" data-type="regulatory">
+                <div class="card-header">
+                    <div class="card-meta">
+                        <div class="card-date">FEB 12, 2026</div>
+                        <div class="card-source">Federal Reserve</div>
+                    </div>
+                    <div class="priority-badge medium">Medium</div>
+                </div>
+                <div class="card-title">Fed Announces Supervisory Operating Principles Refresh</div>
+                <div class="card-summary">
+                    Federal Reserve published updated supervisory operating principles focused on timely, proportionate action on "most important risks" to bank safety and soundness. Signals potential shift toward more principles-based supervision. Announced 30% reduction in Supervision & Regulation division staffing (500→350 employees) by end of 2026 through attrition.
+                </div>
+                <div class="card-tags">
+                    <span class="tag sector">Banks - All</span>
+                    <span class="tag topic">Supervision</span>
+                </div>
+            </div>
+
+            <div class="policy-card medium" data-type="legislative">
+                <div class="card-header">
+                    <div class="card-meta">
+                        <div class="card-date">FEB 11, 2026</div>
+                        <div class="card-source">Senate Banking</div>
+                    </div>
+                    <div class="priority-badge medium">Medium</div>
+                </div>
+                <div class="card-title">Senate Banking Advances Housing Legislation Package</div>
+                <div class="card-summary">
+                    Chairman Scott and Ranking Member Warren led unanimous committee vote advancing comprehensive housing bills addressing affordability and supply constraints. Package includes measures supporting first-time homebuyers and incentivizing multifamily construction. Floor schedule TBD pending leadership negotiations.
+                </div>
+                <div class="card-tags">
+                    <span class="tag sector">Housing Finance</span>
+                    <span class="tag topic">Legislation</span>
+                </div>
+            </div>
+
+            <div class="policy-card medium" data-type="market">
+                <div class="card-header">
+                    <div class="card-meta">
+                        <div class="card-date">FEB 10-14, 2026</div>
+                        <div class="card-source">Market Data</div>
+                    </div>
+                    <div class="priority-badge medium">Medium</div>
+                </div>
+                <div class="card-title">Regional Bank Stocks Rally on CRE Stabilization Signals</div>
+                <div class="card-summary">
+                    KRE (regional bank ETF) gained 3.2% this week following data showing bank loan loss provisions coming in below estimates and lower-than-expected net charge-offs on commercial real estate portfolios. Analysts cite Fed Senior Loan Officer Survey showing only 9% of banks tightening lending standards vs. 30.3% in April 2024.
+                </div>
+                <div class="card-tags">
+                    <span class="tag sector">Banks - Regional</span>
+                    <span class="tag topic">Commercial Real Estate</span>
+                    <span class="tag topic">Credit Quality</span>
+                </div>
+            </div>
+
+            <!-- Credit Union Specific Section -->
+            <div class="section-header">🏦 Credit Union Specific Tracker</div>
+
+            <div class="policy-card medium" data-type="regulatory">
+                <div class="card-header">
+                    <div class="card-meta">
+                        <div class="card-date">FEB 2026</div>
+                        <div class="card-source">NCUA Watch</div>
+                    </div>
+                    <div class="priority-badge medium">Medium</div>
+                </div>
+                <div class="card-title">NCUA Monitoring OCC Community Bank BSA/AML Relief</div>
+                <div class="card-summary">
+                    Following OCC's February 1 implementation of tailored BSA/AML exam procedures for community banks, credit union industry groups (CUNA, NAFCU) are pressing NCUA to adopt similar risk-based approaches. Historical pattern shows NCUA typically follows OCC/FDIC regulatory relief within 6-12 months. Watch for NCUA Board agenda items in Q2 2026.
+                </div>
+                <div class="card-tags">
+                    <span class="tag sector">Credit Unions</span>
+                    <span class="tag topic">AML/BSA</span>
+                    <span class="tag topic">Regulatory Relief</span>
+                </div>
+            </div>
+
+            <div class="policy-card medium" data-type="legislative">
+                <div class="card-header">
+                    <div class="card-meta">
+                        <div class="card-date">ONGOING</div>
+                        <div class="card-source">Senate Banking / Housing Bills</div>
+                    </div>
+                    <div class="priority-badge medium">Medium</div>
+                </div>
+                <div class="card-title">Housing Legislation Package May Expand CU Member Business Lending</div>
+                <div class="card-summary">
+                    Senate Banking's unanimous housing package advancement includes provisions that could benefit credit union commercial real estate and member business lending. If GSE reform includes community lender provisions, credit unions may gain expanded access to secondary market facilities. Monitor for MBL cap expansion language in final bill text.
+                </div>
+                <div class="card-tags">
+                    <span class="tag sector">Credit Unions</span>
+                    <span class="tag topic">Housing Finance</span>
+                    <span class="tag topic">Member Business Lending</span>
+                </div>
+            </div>
+
+            <!-- Crypto/Digital Assets Deep Dive -->
+            <div class="section-header">₿ Crypto & Digital Assets Tracker</div>
+
+            <div class="policy-card critical" data-type="executive">
+                <div class="card-header">
+                    <div class="card-meta">
+                        <div class="card-date">FEB 12, 2026</div>
+                        <div class="card-source">SEC / Senate Banking</div>
+                    </div>
+                    <div class="priority-badge critical">Critical</div>
+                </div>
+                <div class="card-title">SEC Crypto Roadmap: Q3 2026 Exemptive Relief Target for Tokenized Securities</div>
+                <div class="card-summary">
+                    Chairman Atkins' testimony laid out concrete timeline: (1) Staff guidance on crypto asset securities by March 2026, (2) No-action letters for qualified custody arrangements by May 2026, (3) Exemptive relief for tokenized RWAs by Q3 2026. SEC-CFTC jurisdictional clarity MOU expected by April. This represents complete reversal from Gensler-era enforcement posture.
+                </div>
+                <div class="card-tags">
+                    <span class="tag sector">Crypto/Digital Assets</span>
+                    <span class="tag sector">Securities</span>
+                    <span class="tag topic">Regulatory Framework</span>
+                    <span class="tag topic">Tokenization</span>
+                </div>
+            </div>
+
+            <div class="policy-card high" data-type="regulatory">
+                <div class="card-header">
+                    <div class="card-meta">
+                        <div class="card-date">JAN 28, 2026</div>
+                        <div class="card-source">SEC Staff</div>
+                    </div>
+                    <div class="priority-badge high">High</div>
+                </div>
+                <div class="card-title">DTC No-Action Letter Enables RWA Tokenization Pilot</div>
+                <div class="card-summary">
+                    Depository Trust Company received no-action relief to offer tokenization service for custodied real-world assets. Scope: Russell 1000 constituents, ETFs tracking major US indices, and US Treasuries. Launch planned for H2 2026. Three-year pilot with restricted participants and position limits. Watershed moment for institutional tokenization infrastructure.
+                </div>
+                <div class="card-tags">
+                    <span class="tag sector">Securities</span>
+                    <span class="tag sector">Crypto/Digital Assets</span>
+                    <span class="tag topic">Tokenization</span>
+                    <span class="tag topic">Market Infrastructure</span>
+                </div>
+            </div>
+
+            <div style="background: var(--bg-secondary); border: 1px solid var(--accent-primary); border-radius: 12px; padding: 1rem; margin-bottom: 1rem;">
+                <div style="font-size: 0.85rem; font-weight: 600; color: var(--accent-primary); margin-bottom: 0.75rem;">
+                    📊 Crypto Policy Tracking Matrix
+                </div>
+                <div style="display: grid; gap: 0.5rem;">
+                    <div style="display: flex; justify-content: space-between; padding: 0.5rem; background: var(--bg-tertiary); border-radius: 6px;">
+                        <div>
+                            <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary);">SEC Jurisdiction</div>
+                            <div style="font-size: 0.7rem; color: var(--text-dim);">Crypto asset securities, investment contracts</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 0.75rem; color: var(--success);">✓ Clarified</div>
+                            <div style="font-size: 0.65rem; color: var(--text-dim);">Atkins testimony</div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; padding: 0.5rem; background: var(--bg-tertiary); border-radius: 6px;">
+                        <div>
+                            <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary);">CFTC Jurisdiction</div>
+                            <div style="font-size: 0.7rem; color: var(--text-dim);">Commodity tokens, derivatives, spot markets</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 0.75rem; color: var(--warning);">⏳ Pending</div>
+                            <div style="font-size: 0.65rem; color: var(--text-dim);">MOU by April</div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; padding: 0.5rem; background: var(--bg-tertiary); border-radius: 6px;">
+                        <div>
+                            <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary);">Stablecoin Legislation</div>
+                            <div style="font-size: 0.7rem; color: var(--text-dim);">House/Senate bipartisan framework</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 0.75rem; color: var(--warning);">⏳ In Progress</div>
+                            <div style="font-size: 0.65rem; color: var(--text-dim);">Committee markup expected</div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; padding: 0.5rem; background: var(--bg-tertiary); border-radius: 6px;">
+                        <div>
+                            <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary);">Bank Crypto Custody</div>
+                            <div style="font-size: 0.7rem; color: var(--text-dim);">OCC/Fed guidance on permissibility</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 0.75rem; color: var(--success);">✓ Permitted</div>
+                            <div style="font-size: 0.65rem; color: var(--text-dim);">SAB 121 rescinded</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Housing Finance Tracker -->
+            <div class="section-header">🏠 Housing Finance Tracker</div>
+
+            <div class="policy-card high" data-type="legislative">
+                <div class="card-header">
+                    <div class="card-meta">
+                        <div class="card-date">FEB 11, 2026</div>
+                        <div class="card-source">Senate Banking Committee</div>
+                    </div>
+                    <div class="priority-badge high">High</div>
+                </div>
+                <div class="card-title">Bipartisan Housing Package Advances Unanimously</div>
+                <div class="card-summary">
+                    Chairman Scott and Ranking Member Warren achieved rare unanimous committee vote on comprehensive housing legislation. Package includes: (1) First-time homebuyer down payment assistance, (2) Tax incentives for multifamily construction, (3) Zoning reform tied to federal transportation funding, (4) FHA loan limit increases in high-cost areas. Floor schedule TBD pending leadership negotiations, but bipartisan support suggests viable pathway.
+                </div>
+                <div class="card-tags">
+                    <span class="tag sector">Housing Finance</span>
+                    <span class="tag topic">Legislation</span>
+                    <span class="tag topic">Affordability</span>
+                </div>
+            </div>
+
+            <div class="policy-card high" data-type="executive">
+                <div class="card-header">
+                    <div class="card-meta">
+                        <div class="card-date">FEB 05, 2026</div>
+                        <div class="card-source">Treasury / FHFA</div>
+                    </div>
+                    <div class="priority-badge high">High</div>
+                </div>
+                <div class="card-title">Treasury-FHFA Coordination on GSE Conservatorship Exit</div>
+                <div class="card-summary">
+                    Secretary Bessent's testimony emphasized Treasury's active coordination with FHFA Director Thompson on Fannie Mae/Freddie Mac reform. Key timeline signals: (1) Capital rebuild completion expected Q4 2026, (2) Administrative conservatorship exit pathway (no Congressional action) being explored, (3) Preferred stock dividend sweep agreements under review. Senate Banking appears supportive of administrative approach given legislative gridlock risk.
+                </div>
+                <div class="card-tags">
+                    <span class="tag sector">GSEs</span>
+                    <span class="tag sector">Housing Finance</span>
+                    <span class="tag topic">GSE Reform</span>
+                </div>
+            </div>
+
+            <div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; margin-bottom: 1rem;">
+                <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.75rem;">
+                    📈 Housing Market Indicators (January 2026)
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;">
+                    <div style="background: var(--bg-tertiary); padding: 0.75rem; border-radius: 6px; text-align: center;">
+                        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.3rem; font-weight: 600; color: var(--accent-primary);">6.8%</div>
+                        <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 0.25rem;">30-Year Mortgage Rate</div>
+                    </div>
+                    <div style="background: var(--bg-tertiary); padding: 0.75rem; border-radius: 6px; text-align: center;">
+                        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.3rem; font-weight: 600; color: var(--warning);">-8%</div>
+                        <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 0.25rem;">Existing Home Sales YoY</div>
+                    </div>
+                    <div style="background: var(--bg-tertiary); padding: 0.75rem; border-radius: 6px; text-align: center;">
+                        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.3rem; font-weight: 600; color: var(--success);">+3%</div>
+                        <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 0.25rem;">Median Home Price YoY</div>
+                    </div>
+                    <div style="background: var(--bg-tertiary); padding: 0.75rem; border-radius: 6px; text-align: center;">
+                        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.3rem; font-weight: 600; color: var(--text-primary);">3.2</div>
+                        <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 0.25rem;">Months Supply</div>
+                    </div>
+                </div>
+            </div>
+
+            </div> <!-- End main-content -->
+            
+            <!-- Desktop Sidebar (hidden on mobile) -->
+            <div class="sidebar">
+                <div class="sidebar-section">
+                    <div class="sidebar-title">📊 Quick Stats</div>
+                    <div class="quick-stat">
+                        <span class="quick-stat-label">Total Items</span>
+                        <span class="quick-stat-value">18</span>
+                    </div>
+                    <div class="quick-stat">
+                        <span class="quick-stat-label">This Week</span>
+                        <span class="quick-stat-value">18</span>
+                    </div>
+                    <div class="quick-stat">
+                        <span class="quick-stat-label">Critical</span>
+                        <span class="quick-stat-value" style="color: var(--accent-critical)">3</span>
+                    </div>
+                    <div class="quick-stat">
+                        <span class="quick-stat-label">High Priority</span>
+                        <span class="quick-stat-value" style="color: var(--warning)">7</span>
+                    </div>
+                </div>
+                
+                <div class="sidebar-section">
+                    <div class="sidebar-title">📅 This Week</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.6;">
+                        <div style="margin-bottom: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border);">
+                            <div style="color: var(--accent-primary); font-weight: 600; margin-bottom: 0.25rem;">Tue, Feb 18</div>
+                            <div>House FinServ Hearing - Fed Vice Chair testimony</div>
+                        </div>
+                        <div style="margin-bottom: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border);">
+                            <div style="color: var(--accent-primary); font-weight: 600; margin-bottom: 0.25rem;">Fri, Feb 21</div>
+                            <div>Fed Stress Test Comment Deadline</div>
+                        </div>
+                        <div>
+                            <div style="color: var(--accent-primary); font-weight: 600; margin-bottom: 0.25rem;">Fri, Feb 21</div>
+                            <div>Existing Home Sales Data</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="sidebar-section">
+                    <div class="sidebar-title">💹 Market Snapshot</div>
+                    <div class="quick-stat">
+                        <span class="quick-stat-label">KRE</span>
+                        <span class="quick-stat-value" style="color: var(--success)">+13.3%</span>
+                    </div>
+                    <div class="quick-stat">
+                        <span class="quick-stat-label">XLF</span>
+                        <span class="quick-stat-value" style="color: var(--warning)">⚠️ Warning</span>
+                    </div>
+                    <div class="quick-stat">
+                        <span class="quick-stat-label">WFC</span>
+                        <span class="quick-stat-value" style="color: var(--accent-critical)">-4.6%</span>
+                    </div>
+                </div>
+                
+                <div class="sidebar-section">
+                    <div class="sidebar-title">🔗 Quick Links</div>
+                    <div style="font-size: 0.8rem; line-height: 2;">
+                        <div><a href="https://www.congress.gov" target="_blank" style="color: var(--accent-primary); text-decoration: none;">→ Congress.gov</a></div>
+                        <div><a href="https://www.federalregister.gov" target="_blank" style="color: var(--accent-primary); text-decoration: none;">→ Federal Register</a></div>
+                        <div><a href="https://www.federalreserve.gov" target="_blank" style="color: var(--accent-primary); text-decoration: none;">→ Federal Reserve</a></div>
+                        <div><a href="https://www.banking.senate.gov" target="_blank" style="color: var(--accent-primary); text-decoration: none;">→ Senate Banking</a></div>
+                        <div><a href="https://financialservices.house.gov" target="_blank" style="color: var(--accent-primary); text-decoration: none;">→ House FinServ</a></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Bottom Navigation -->
+        <div class="footer-nav">
+            <a href="#" class="nav-item active">
+                <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+                </svg>
+                <span>Dashboard</span>
+            </a>
+            <a href="#" class="nav-item">
+                <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
+                </svg>
+                <span>Calendar</span>
+            </a>
+            <a href="#" class="nav-item">
+                <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                    <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
+                </svg>
+                <span>Archive</span>
+            </a>
+            <a href="#" class="nav-item">
+                <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 0l-2 2a1 1 0 101.414 1.414L8 10.414l1.293 1.293a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                </svg>
+                <span>Trends</span>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // Filter functionality
+        const chips = document.querySelectorAll('.chip');
+        const cards = document.querySelectorAll('.policy-card');
+
+        chips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                // Update active state
+                chips.forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+
+                const filter = chip.dataset.filter;
+
+                // Filter cards
+                cards.forEach(card => {
+                    if (filter === 'all') {
+                        card.style.display = 'block';
+                    } else if (filter === 'critical' || filter === 'high' || filter === 'medium') {
+                        card.style.display = card.classList.contains(filter) ? 'block' : 'none';
+                    } else {
+                        card.style.display = card.dataset.type === filter ? 'block' : 'none';
+                    }
+                });
+            });
+        });
+
+        // Summary toggle functionality
+        const summaryToggle = document.getElementById('summaryToggle');
+        const executiveSummary = document.getElementById('executiveSummary');
+
+        summaryToggle.addEventListener('click', () => {
+            if (executiveSummary.classList.contains('visible')) {
+                executiveSummary.classList.remove('visible');
+                summaryToggle.innerHTML = `
+                    <svg class="toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span>Week in Review</span>
+                `;
+            } else {
+                executiveSummary.classList.add('visible');
+                summaryToggle.innerHTML = `
+                    <svg class="toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    <span>Close Summary</span>
+                `;
+                // Scroll to summary
+                executiveSummary.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+
+        // Add smooth scroll behavior
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+
+        // Add expand/collapse functionality to individual cards (optional future feature)
+        // This could show full details vs. summary view for each card
+
+        // AUTO-REFRESH AND DATA LOADING
+        const CONGRESS_API_KEY = 'iKMEhhKn7Ad0WdXcixedz9AsIEiPsNZn5AnW8BCr';
+        const REFRESH_INTERVAL = 10 * 60 * 1000; // 10 minutes
+        
+        // Update dashboard date display
+        function updateDashboardDate() {
+            const headerDateEl = document.getElementById('headerDate');
+            if (!headerDateEl) return;
+            
+            const now = new Date();
+            const dayName = now.toLocaleDateString('en-US', { weekday: 'long' });
+            const monthDay = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            
+            headerDateEl.textContent = `${dayName}, ${monthDay}`;
+        }
+        
+        // Calculate date ranges for different tracking periods
+        function getDateRanges() {
+            const now = new Date();
+            
+            return {
+                // DAILY: Last 24 hours
+                daily: {
+                    start: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+                    end: now,
+                    label: 'Today'
+                },
+                // WEEKLY: Last 7 days
+                weekly: {
+                    start: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
+                    end: now,
+                    label: 'This Week'
+                },
+                // MONTHLY: Last 30 days
+                monthly: {
+                    start: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
+                    end: now,
+                    label: 'This Month'
+                },
+                // QUARTERLY: Last 90 days
+                quarterly: {
+                    start: new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000),
+                    end: now,
+                    label: 'This Quarter'
+                }
+            };
+        }
+        
+        // Check internet connectivity
+        async function checkInternetConnection() {
+            try {
+                const response = await fetch('https://www.federalregister.gov/api/v1/public-inspection-documents.json?per_page=1', {
+                    method: 'HEAD',
+                    cache: 'no-cache'
+                });
+                return response.ok;
+            } catch (error) {
+                console.warn('Internet connectivity check failed:', error);
+                return false;
+            }
+        }
+
+        async function refreshData() {
+            const btn = document.getElementById('refreshBtn');
+            const updateTextEl = document.getElementById('updateText');
+            const statusIndicator = document.getElementById('connectionStatus');
+            
+            if (!btn || !updateTextEl) {
+                console.error('Dashboard elements not found');
+                return;
+            }
+            
+            // Check internet first
+            const isOnline = await checkInternetConnection();
+            if (!isOnline) {
+                if (statusIndicator) statusIndicator.classList.add('offline');
+                if (updateTextEl) updateTextEl.textContent = 'No internet connection';
+                alert('⚠️ Cannot refresh: No internet connection detected.\n\nPlease check your network and try again.');
+                return;
+            }
+            
+            // Show online status
+            if (statusIndicator) statusIndicator.classList.remove('offline');
+            
+            btn.disabled = true;
+            btn.classList.add('refreshing');
+            btn.innerHTML = '<span class="refresh-icon">🔄</span><span>Refreshing...</span>';
+            
+            try {
+                console.log('🌐 Internet connection confirmed');
+                
+                // Fetch Federal Register data
+                console.log('📰 Fetching Federal Register data...');
+                const fedRegData = await fetchFederalRegister();
+                console.log(`✓ Got ${fedRegData.length} Federal Register items`);
+                
+                // Fetch Congress data
+                console.log('🏛️ Fetching Congressional data...');
+                const congressData = await fetchCongressData();
+                console.log(`✓ Got ${congressData.length} Congressional items`);
+                
+                // Combine all data
+                const allData = [...fedRegData, ...congressData];
+                
+                // Update the dashboard display
+                if (allData.length > 0) {
+                    updateDashboardContent(allData);
+                    console.log(`✓ Dashboard updated with ${allData.length} items`);
+                } else {
+                    console.warn('⚠️ No data received from APIs');
+                }
+                
+                // Update timestamp
+                const now = new Date();
+                if (updateTextEl) {
+                    updateTextEl.textContent = `Last updated: ${now.toLocaleString('en-US', { 
+                        hour: 'numeric', 
+                        minute: '2-digit',
+                        hour12: true 
+                    })}`;
+                }
+                
+                // Update stats
+                updateStats(allData);
+                
+                console.log(`✅ Refresh complete - ${allData.length} total items`);
+                
+            } catch (error) {
+                console.error('❌ Refresh error:', error);
+                if (updateTextEl) {
+                    updateTextEl.textContent = `Update failed: ${new Date().toLocaleTimeString()}`;
+                }
+                
+                // Show detailed error to user
+                alert(`Failed to refresh data:\n\n${error.message}\n\nPlease check:\n- Internet connection\n- Firewall settings\n- Browser allows API requests`);
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('refreshing');
+                btn.innerHTML = '<span class="refresh-icon">🔄</span><span>Refresh Now</span>';
+            }
+        }
+
+        async function fetchCongressData() {
+            try {
+                const ranges = getDateRanges();
+                // Fetch last 24 hours for daily tracking
+                const fromDate = ranges.daily.start.toISOString();
+                
+                // Congress.gov API endpoint
+                const url = `https://api.congress.gov/v3/bill/119?api_key=${CONGRESS_API_KEY}&format=json&fromDateTime=${fromDate}&limit=50&sort=updateDate+desc`;
+                
+                console.log(`🔗 Calling Congress API (last 24 hours)...`);
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    console.warn(`⚠️ Congress API returned ${response.status}: ${response.statusText}`);
+                    
+                    // If it's a CORS issue, provide helpful message
+                    if (response.status === 0 || response.type === 'opaque') {
+                        console.warn('💡 Note: Congress API may be blocked by CORS in browser. This is normal for file:// protocol.');
+                    }
+                    return [];
+                }
+                
+                const data = await response.json();
+                const bills = data.bills || [];
+                
+                console.log(`✓ Congress API returned ${bills.length} bills (last 24 hours)`);
+                
+                return bills.map(bill => {
+                    // Determine time period
+                    const updateDate = new Date(bill.updateDate || bill.introducedDate);
+                    const hoursDiff = (Date.now() - updateDate.getTime()) / (1000 * 60 * 60);
+                    
+                    let period = 'quarterly';
+                    if (hoursDiff <= 24) period = 'daily';
+                    else if (hoursDiff <= 168) period = 'weekly';
+                    else if (hoursDiff <= 720) period = 'monthly';
+                    
+                    return {
+                        type: 'legislative',
+                        title: bill.title || 'Untitled Bill',
+                        date: bill.introducedDate || bill.updateDate || '',
+                        source: `${bill.type} ${bill.number}`,
+                        summary: bill.latestAction?.text || 'No summary available',
+                        priority: 'medium',
+                        link: `https://www.congress.gov/bill/119th-congress/${(bill.type || '').toLowerCase()}-bill/${bill.number}`,
+                        sectors: 'Financial Services',
+                        topics: 'Legislative',
+                        period: period // daily, weekly, monthly, quarterly
+                    };
+                });
+                
+            } catch (error) {
+                console.warn('⚠️ Congress API error:', error.message);
+                console.log('💡 Continuing with Federal Register data only...');
+                return [];
+            }
+        }
+
+        async function fetchFederalRegister() {
+            const agencies = [
+                { slug: 'federal-reserve-system', name: 'Federal Reserve' },
+                { slug: 'consumer-financial-protection-bureau', name: 'CFPB' },
+                { slug: 'comptroller-of-the-currency', name: 'OCC' },
+                { slug: 'federal-deposit-insurance-corporation', name: 'FDIC' },
+                { slug: 'national-credit-union-administration', name: 'NCUA' },
+                { slug: 'securities-and-exchange-commission', name: 'SEC' }
+            ];
+
+            const ranges = getDateRanges();
+            // Fetch last 24 hours for daily tracking
+            const startDate = ranges.daily.start.toISOString().split('T')[0];
+
+            let allDocs = [];
+            let successCount = 0;
+            let failCount = 0;
+
+            for (const agency of agencies) {
+                try {
+                    const url = `https://www.federalregister.gov/api/v1/documents.json?conditions[agencies][]=${agency.slug}&conditions[publication_date][gte]=${startDate}&per_page=10`;
+                    
+                    console.log(`📡 Fetching ${agency.name} (last 24 hours)...`);
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json'
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        console.warn(`⚠️ ${agency.name} returned ${response.status}`);
+                        failCount++;
+                        continue;
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (data.results && data.results.length > 0) {
+                        const items = data.results.map(doc => {
+                            // Determine time period
+                            const pubDate = new Date(doc.publication_date);
+                            const hoursDiff = (Date.now() - pubDate.getTime()) / (1000 * 60 * 60);
+                            
+                            let period = 'quarterly';
+                            if (hoursDiff <= 24) period = 'daily';
+                            else if (hoursDiff <= 168) period = 'weekly';
+                            else if (hoursDiff <= 720) period = 'monthly';
+                            
+                            return {
+                                type: 'regulatory',
+                                title: doc.title,
+                                date: doc.publication_date,
+                                source: agency.name,
+                                summary: doc.abstract || 'No summary available',
+                                priority: doc.type === 'Rule' ? 'high' : 'medium',
+                                link: doc.html_url,
+                                sectors: 'Financial Services',
+                                topics: 'Regulatory',
+                                period: period // daily, weekly, monthly, quarterly
+                            };
+                        });
+                        allDocs = allDocs.concat(items);
+                        successCount++;
+                        console.log(`✓ ${agency.name}: ${items.length} items`);
+                    } else {
+                        console.log(`ℹ️ ${agency.name}: No items in last 24 hours`);
+                        successCount++;
+                    }
+                } catch (error) {
+                    console.warn(`❌ Error fetching ${agency.name}:`, error.message);
+                    failCount++;
+                }
+            }
+
+            console.log(`📊 Federal Register: ${successCount}/${agencies.length} agencies succeeded`);
+            return allDocs;
+        }
+
+        function updateDashboardContent(items) {
+            console.log('💾 Saving data to localStorage...');
+            
+            // Calculate period breakdowns
+            const periods = {
+                daily: items.filter(i => i.period === 'daily').length,
+                weekly: items.filter(i => i.period === 'weekly').length,
+                monthly: items.filter(i => i.period === 'monthly').length,
+                quarterly: items.filter(i => i.period === 'quarterly').length
+            };
+            
+            console.log('📊 Period breakdown:');
+            console.log(`   📅 Today: ${periods.daily} items`);
+            console.log(`   📅 This Week: ${periods.weekly} items`);
+            console.log(`   📅 This Month: ${periods.monthly} items`);
+            console.log(`   📅 This Quarter: ${periods.quarterly} items`);
+            
+            // Store in localStorage so it persists
+            try {
+                localStorage.setItem('policyData', JSON.stringify(items));
+                localStorage.setItem('lastUpdate', new Date().toISOString());
+                localStorage.setItem('periodBreakdown', JSON.stringify(periods));
+                console.log('✓ Data saved to localStorage');
+            } catch (e) {
+                console.warn('⚠️ Could not save to localStorage:', e.message);
+            }
+        }
+        
+        function updateStats(items) {
+            const totalEl = document.querySelector('.stat-item:nth-child(1) .stat-value');
+            const criticalEl = document.querySelector('.stat-item:nth-child(2) .stat-value');
+            const highEl = document.querySelector('.stat-item:nth-child(3) .stat-value');
+            
+            if (totalEl) totalEl.textContent = items.length;
+            if (criticalEl) {
+                const criticalCount = items.filter(i => i.priority === 'critical').length;
+                criticalEl.textContent = criticalCount;
+            }
+            if (highEl) {
+                const highCount = items.filter(i => i.priority === 'high').length;
+                highEl.textContent = highCount;
+            }
+        }
+
+        // Load data from localStorage on page load
+        function loadSavedData() {
+            try {
+                const savedData = localStorage.getItem('policyData');
+                const lastUpdate = localStorage.getItem('lastUpdate');
+                
+                if (savedData && lastUpdate) {
+                    const items = JSON.parse(savedData);
+                    const updateTime = new Date(lastUpdate);
+                    
+                    console.log(`💾 Loaded ${items.length} items from cache`);
+                    console.log(`📅 Last updated: ${updateTime.toLocaleString()}`);
+                    
+                    updateStats(items);
+                    
+                    const updateTextEl = document.getElementById('updateText');
+                    if (updateTextEl) {
+                        updateTextEl.textContent = `Last updated: ${updateTime.toLocaleString('en-US', { 
+                            hour: 'numeric', 
+                            minute: '2-digit',
+                            hour12: true 
+                        })}`;
+                    }
+                }
+            } catch (e) {
+                console.warn('⚠️ Could not load from localStorage:', e.message);
+            }
+        }
+
+        // Initialize dashboard
+        async function initializeDashboard() {
+            console.log('🚀 Initializing Federal Policy Dashboard...');
+            console.log('📍 Dashboard location:', window.location.href);
+            console.log('🔑 Congress API Key configured: Yes');
+            console.log('⏰ Auto-refresh interval: 10 minutes');
+            console.log('📅 Tracking periods: Daily (24h), Weekly (7d), Monthly (30d), Quarterly (90d)');
+            
+            // Set current date
+            updateDashboardDate();
+            
+            const statusIndicator = document.getElementById('connectionStatus');
+            const updateTextEl = document.getElementById('updateText');
+            
+            // Load any cached data first
+            loadSavedData();
+            
+            // Check internet connectivity
+            const isOnline = await checkInternetConnection();
+            if (isOnline) {
+                console.log('✓ Internet connection confirmed');
+                if (statusIndicator) statusIndicator.classList.remove('offline');
+                
+                // Wait 2 seconds then do initial refresh
+                setTimeout(() => {
+                    console.log('🔄 Starting initial data refresh...');
+                    refreshData();
+                }, 2000);
+                
+                // Set up auto-refresh every 10 minutes
+                setInterval(refreshData, REFRESH_INTERVAL);
+                console.log('✓ Auto-refresh scheduled every 10 minutes');
+            } else {
+                console.warn('⚠️ No internet connection detected');
+                if (statusIndicator) statusIndicator.classList.add('offline');
+                if (updateTextEl) {
+                    updateTextEl.textContent = 'No internet - using cached data';
+                }
+            }
+            
+            console.log('✅ Dashboard initialization complete');
+            console.log('💡 Open Console (F12) to see detailed logs');
+        }
+
+        // Start dashboard when page loads
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeDashboard);
+        } else {
+            initializeDashboard();
+        }
+    </script>
+</body>
+</html>
